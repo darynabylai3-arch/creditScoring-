@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кредитный скоринг</title>
+<style>
+  :root {
+    --bg:#f4f6fa; --card:#fff; --text:#1c2333; --muted:#6b7488; --line:#e3e7ef;
+    --good:#1f9d63; --mid:#e0a100; --bad:#d6453d; --accent:#3459d6;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background:var(--bg); color:var(--text); }
+  .wrap { max-width:1100px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { margin:0 0 4px; font-size:26px; }
+  .sub { color:var(--muted); margin-bottom:22px; }
+  .grid { display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:12px 0 4px; }
+  input, select { width:100%; padding:9px 10px; font-size:15px; border:1px solid var(--line);
+                  border-radius:8px; background:#fff; color:var(--text); }
+  input:focus, select:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  button { margin-top:20px; width:100%; padding:12px; font-size:16px; font-weight:600;
+           background:var(--accent); color:#fff; border:0; border-radius:10px; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:wait; }
+  .hint { font-size:12px; color:var(--muted); margin-top:4px; }
+  .empty { color:var(--muted); text-align:center; padding:60px 10px; }
+  .top { display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
+  .gauge { width:240px; flex:none; }
+  .big { font-size:40px; font-weight:700; line-height:1; }
+  .verdict { font-size:18px; font-weight:600; margin-top:6px; }
+  .good { color:var(--good); } .mid { color:var(--mid); } .bad { color:var(--bad); }
+  .meta { color:var(--muted); font-size:14px; margin-top:8px; }
+  h2 { font-size:17px; margin:26px 0 4px; }
+  .legend { font-size:13px; color:var(--muted); margin-bottom:10px; }
+  .chart-row { display:grid; grid-template-columns: 190px 1fr; gap:10px; align-items:center;
+               padding:6px 0; border-top:1px solid var(--line); }
+  .chart-row:first-child { border-top:0; }
+  .name { font-size:14px; font-weight:600; }
+  .val { font-size:12px; color:var(--muted); font-weight:400; }
+  .track { position:relative; height:22px; }
+  .track::before { content:""; position:absolute; left:50%; top:0; bottom:0; width:1px; background:#b9c0cf; }
+  .bar { position:absolute; top:3px; height:16px; border-radius:4px; }
+  .bar.pos { background:var(--good); left:50%; }
+  .bar.neg { background:var(--bad); right:50%; }
+  .note { font-size:12.5px; color:var(--muted); grid-column:2; margin-top:-2px; }
+  .lists { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width: 640px) { .lists { grid-template-columns:1fr; } .chart-row { grid-template-columns:1fr; } .note { grid-column:1; } }
+  .lists h3 { margin:0 0 6px; font-size:15px; }
+  .lists ul { margin:0; padding-left:18px; font-size:14px; }
+  .lists li { margin-bottom:6px; }
+  .err { color:var(--bad); margin-top:10px; font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Кредитный скоринг</h1>
+  <div class="sub">Введите данные заёмщика и параметры кредита - модель оценит шанс одобрения и объяснит решение.</div>
+
+  <div class="grid">
+    <form id="form" class="card">
+      <div class="row2">
+        <div><label>Возраст</label><input name="person_age" type="number" min="18" max="100" value="30" required></div>
+        <div><label>Стаж работы, лет</label><input name="person_emp_length" type="number" min="0" max="60" step="0.5" value="5" required></div>
+      </div>
+      <label>Годовой доход</label>
+      <input name="person_income" type="number" min="1" value="60000" required>
+      <label>Жильё</label>
+      <select name="person_home_ownership">
+        <option value="RENT">Аренда</option><option value="MORTGAGE">Ипотека</option>
+        <option value="OWN">Своё</option><option value="OTHER">Другое</option>
+      </select>
+      <label>Цель кредита</label>
+      <select name="loan_intent">
+        <option value="PERSONAL">Личные нужды</option><option value="EDUCATION">Образование</option>
+        <option value="MEDICAL">Лечение</option><option value="VENTURE">Бизнес</option>
+        <option value="HOMEIMPROVEMENT">Ремонт</option><option value="DEBTCONSOLIDATION">Рефинансирование долгов</option>
+      </select>
+      <div class="row2">
+        <div><label>Сумма кредита</label><input name="loan_amnt" type="number" min="1" value="10000" required></div>
+        <div><label>Ставка, %</label><input name="loan_int_rate" type="number" min="0" max="40" step="0.01" value="11" required></div>
+      </div>
+      <label>Кредитный рейтинг (грейд)</label>
+      <select name="loan_grade">
+        <option>A</option><option selected>B</option><option>C</option><option>D</option>
+        <option>E</option><option>F</option><option>G</option>
+      </select>
+      <div class="hint">A - лучший, G - худший</div>
+      <div class="row2">
+        <div><label>Были просрочки?</label>
+          <select name="cb_person_default_on_file"><option value="N">Нет</option><option value="Y">Да</option></select></div>
+        <div><label>Кред. история, лет</label><input name="cb_person_cred_hist_length" type="number" min="0" max="60" value="5" required></div>
+      </div>
+      <button id="btn" type="submit">Рассчитать</button>
+      <div id="err" class="err"></div>
+    </form>
+
+    <div class="card" id="result">
+      <div class="empty">Заполните форму и нажмите «Рассчитать»</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const form = document.getElementById('form');
+const result = document.getElementById('result');
+const btn = document.getElementById('btn');
+const errEl = document.getElementById('err');
+const COLORS = { good:'#1f9d63', mid:'#e0a100', bad:'#d6453d' };
+
+function gauge(pct, level) {
+  // полукруг: 0% слева, 100% справа
+  const r = 90, cx = 110, cy = 110;
+  const a = Math.PI * (1 - pct / 100);
+  const x = cx + r * Math.cos(a), y = cy - r * Math.sin(a);
+  const large = 0;
+  return `<svg viewBox="0 0 220 125" class="gauge">
+    <path d="M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="#e3e7ef" stroke-width="16" stroke-linecap="round"/>
+    <path d="M ${cx-r} ${cy} A ${r} ${r} 0 ${large} 1 ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${COLORS[level]}" stroke-width="16" stroke-linecap="round"/>
+    <text x="${cx}" y="${cy-8}" text-anchor="middle" font-size="34" font-weight="700" fill="${COLORS[level]}">${pct}%</text>
+    <text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="12" fill="#6b7488">шанс одобрения</text>
+  </svg>`;
+}
+
+function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function render(d) {
+  const maxAbs = Math.max(...d.factors.map(f => Math.abs(f.impact)), 0.01);
+  const rows = d.factors.map(f => {
+    const w = (Math.abs(f.impact) / maxAbs) * 48;  // % ширины от центра
+    const cls = f.good ? 'pos' : 'neg';
+    return `<div class="chart-row">
+      <div class="name">${esc(f.label)}<div class="val">${esc(f.value)}</div></div>
+      <div class="track"><div class="bar ${cls}" style="width:${w}%"></div></div>
+      <div class="note">${esc(f.text)}</div>
+    </div>`;
+  }).join('');
+
+  const good = d.factors.filter(f => f.good).slice(0, 4);
+  const bad = d.factors.filter(f => !f.good).slice(0, 4);
+  const li = arr => arr.length
+    ? arr.map(f => `<li><b>${esc(f.label)}</b> (${esc(f.value)}) - ${esc(f.text)}</li>`).join('')
+    : '<li>нет значимых факторов</li>';
+
+  result.innerHTML = `
+    <div class="top">
+      ${gauge(d.chance, d.level)}
+      <div>
+        <div class="verdict ${d.level}">${esc(d.verdict)}</div>
+        <div class="meta">Кредитный балл: <b>${d.score}</b> (шкала 300-850)<br>
+        Вероятность невозврата: ${d.default_risk}%<br>
+        Кредит составляет ${d.loan_percent_income}% годового дохода</div>
+      </div>
+    </div>
+
+    <h2>Что повлияло на решение</h2>
+    <div class="legend"><span class="good">■ вправо (зелёный)</span> - повышает шанс, <span class="bad">■ влево (красный)</span> - снижает шанс. Длина столбца - сила влияния.</div>
+    ${rows}
+
+    <h2>Итог</h2>
+    <div class="lists">
+      <div><h3 class="good">Что хорошо</h3><ul>${li(good)}</ul></div>
+      <div><h3 class="bad">Что мешает</h3><ul>${li(bad)}</ul></div>
+    </div>`;
+}
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  errEl.textContent = '';
+  btn.disabled = true; btn.textContent = 'Считаем...';
+  const fd = new FormData(form);
+  const body = {};
+  for (const [k, v] of fd.entries()) {
+    body[k] = ['person_home_ownership','loan_intent','loan_grade','cb_person_default_on_file'].includes(k) ? v : Number(v);
+  }
+  try {
+    const r = await fetch('/api/score', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      throw new Error(Array.isArray(j.detail) ? j.detail.map(x => x.loc.slice(-1)[0] + ': ' + x.msg).join('; ') : 'Ошибка сервера');
+    }
+    render(await r.json());
+  } catch (ex) { errEl.textContent = ex.message; }
+  finally { btn.disabled = false; btn.textContent = 'Рассчитать'; }
+});
+</script>
+</body>
+</html>
